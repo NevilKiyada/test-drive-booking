@@ -10,6 +10,7 @@ dotenv.config();
 const app = express();
 
 // Middleware
+
 app.use(cookieParser()); // Enable cookie parsing
 app.use(express.json());
 
