@@ -64,8 +64,8 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: "*", // Allow all origins (for development only)
-  credentials: true
+  origin: "http://localhost:5173", // ✅ Explicitly set frontend origin
+  credentials: true // ✅ Allow cookies & authentication headers
 }));
 
 app.use(cookieParser()); 
@@ -102,6 +102,6 @@ app.get("/admin/dashboard", authenticateUser, (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
 
-// Start server
+// Start server 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

@@ -116,6 +116,7 @@
 
 const express = require("express");
 const User = require("../models/User");
+const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
@@ -159,44 +160,59 @@ router.post("/register", async (req, res) => {
 });
 
 // Login for users (Admin or Regular User)
-router.post("/login", async (req, res) => {
+// router.post("/login", async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     if (user.password !== password) {
+//       return res.status(401).json({ message: "Invalid password" });
+//     }
+
+//     res.cookie("userId", user._id.toString(), { httpOnly: true, secure: false, maxAge: 86400000 });
+//     res.cookie("role", user.role, { httpOnly: true, secure: false, maxAge: 86400000 });
+
+//     res.status(200).json({ message: "Login successful", user: { id: user._id, name: user.name, role: user.role } });
+//   } catch (err) {
+//     console.error("Error during login:", err);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
+
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log(req);
+  console.log("🔍 Incoming Login Request:", { email, password });
+
   try {
-    // Check if the user exists
-    const user = await User.findOne({ email });
+      const user = await User.findOne({ email });
+      console.log("🛠 Found User:", user);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+      if (!user) {
+          return res.status(401).json({ message: "User not found" });
+      }
 
-    // Validate the password
-    if (user.password !== password) {
-      return res.status(401).json({ message: "Invalid password" });
-    }
+      // Since passwords are stored in plain text, do a direct comparison
+      if (user.password !== password) {
+          console.log("❌ Password does not match");
+          return res.status(401).json({ message: "Invalid credentials" });
+      }
 
-    // Store user ID and role in cookies
-    res.cookie("userId", user._id, {
-      httpOnly: true, // Ensures the cookie is not accessible via JavaScript (security)
-      secure: process.env.NODE_ENV === "production", // Ensures cookies are sent over HTTPS in production
-      maxAge: 24 * 60 * 60 * 1000, // 1 day expiration
-    });
+      // Generate token and respond
+      res.json({
+          message: "Login successful",
+          user: { id: user._id, email: user.email, role: user.role },
+      });
 
-    res.cookie("role", user.role, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-
-    res.status(200).json({
-      message: "Login successful",
-      user: { id: user._id, name: user.name, role: user.role },
-    });
-  } catch (err) {
-    console.error("Error during login:", err);
-    res.status(500).json({ message: "Internal server error" });
+  } catch (error) {
+      console.error("⚠️ Login Error:", error);
+      res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Fetch all users (Admin only)
 router.get("/all-users", async (req, res) => {
