@@ -49,14 +49,17 @@
 // const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
-const cors = require("cors"); // Import CORS
+const cors = require("cors");
+
+// Import Routes
 const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const carRoutes = require("./routes/carRoutes"); // New Car Routes
+const showroomRoutes = require("./routes/showroomRoutes"); // New Showroom Routes
 
 dotenv.config();
 
@@ -64,8 +67,8 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:5173", // ✅ Explicitly set frontend origin
-  credentials: true // ✅ Allow cookies & authentication headers
+  origin: "http://localhost:5173", // Adjust this if needed for frontend
+  credentials: true // Allow cookies & authentication headers
 }));
 
 app.use(cookieParser()); 
@@ -101,6 +104,14 @@ app.get("/admin/dashboard", authenticateUser, (req, res) => {
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/cars", carRoutes); // ✅ New Car Routes
+app.use("/api/showrooms", showroomRoutes); // ✅ New Showroom Routes
+
+// Logout Route
+app.post("/api/users/logout", (req, res) => {
+  res.clearCookie("token"); 
+  res.status(200).json({ message: "Logged out successfully" });
+});
 
 // Start server 
 const PORT = process.env.PORT || 5000;

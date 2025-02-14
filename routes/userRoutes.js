@@ -112,53 +112,6 @@
 
 // module.exports = router;
 
-
-
-const express = require("express");
-const User = require("../models/User");
-const bcrypt = require('bcryptjs');
-
-const router = express.Router();
-
-// Middleware to protect admin-only routes
-function isAdmin(req, res, next) {
-  const { role } = req.user || {};
-  if (role !== "admin") {
-    return res.status(403).json({ message: "Access denied: Admins only" });
-  }
-  next();
-}
-
-// Register a new user (Admin or Regular User)
-router.post("/register", async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-
-  // Validate input fields
-  if (!name || !email || !phone || !password) {
-    return res.status(400).json({ error: "Please provide all required fields" });
-  }
-
-  try {
-    // Check if the user already exists by email
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email already in use" });
-    }
-
-    // Create a new user
-    const newUser = new User({ name, email, phone, password, role: role || "user" });
-    await newUser.save();
-
-    res.status(200).json({
-      message: "User registered successfully",
-      user: newUser,
-    });
-  } catch (err) {
-    console.error("Error during user registration:", err);
-    res.status(500).json({ error: "Failed to register user", details: err.message });
-  }
-});
-
 // Login for users (Admin or Regular User)
 // router.post("/login", async (req, res) => {
 //   const { email, password } = req.body;
@@ -183,39 +136,77 @@ router.post("/register", async (req, res) => {
 //   }
 // });
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  console.log("🔍 Incoming Login Request:", { email, password });
+
+const express = require("express");
+const User = require("../models/User");
+
+const router = express.Router();
+
+// Middleware to check admin access
+function isAdmin(req, res, next) {
+  const { role } = req.body || {}; // Role comes from request body
+  if (role !== "admin") {
+    return res.status(403).json({ message: "Access denied: Admins only" });
+  }
+  next();
+}
+
+// Register a new user (Admin or Regular User)
+router.post("/register", async (req, res) => {
+  const { name, email, phone, password, role } = req.body;
+
+  if (!name || !email || !phone || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
 
   try {
-      const user = await User.findOne({ email });
-      console.log("🛠 Found User:", user);
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
 
-      if (!user) {
-          return res.status(401).json({ message: "User not found" });
-      }
+    // Create new user
+    const newUser = new User({ name, email, phone, password, role: role || "user" });
+    await newUser.save();
 
-      // Since passwords are stored in plain text, do a direct comparison
-      if (user.password !== password) {
-          console.log("❌ Password does not match");
-          return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Generate token and respond
-      res.json({
-          message: "Login successful",
-          user: { id: user._id, email: user.email, role: user.role },
-      });
-
-  } catch (error) {
-      console.error("⚠️ Login Error:", error);
-      res.status(500).json({ message: "Server error" });
+    res.status(201).json({
+      message: "User registered successfully",
+      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role },
+    });
+  } catch (err) {
+    console.error("Error during registration:", err);
+    res.status(500).json({ error: "Failed to register user" });
   }
 });
 
+// User Login (No JWT, uses plain text password)
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
 
-// Fetch all users (Admin only)
-router.get("/all-users", async (req, res) => {
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Check plain text password
+    if (user.password !== password) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    res.status(200).json({
+      message: "Login successful",
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Fetch all users (Admin Only)
+router.get("/all-users", isAdmin, async (req, res) => {
   try {
     const users = await User.find();
     res.status(200).json(users);
@@ -225,12 +216,10 @@ router.get("/all-users", async (req, res) => {
   }
 });
 
-// Fetch a specific user by ID (Admin or Regular User)
+// Fetch a specific user by ID
 router.get("/:id", async (req, res) => {
-  const userId = req.params.id;
-
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -239,6 +228,11 @@ router.get("/:id", async (req, res) => {
     console.error("Error fetching user:", err);
     res.status(500).json({ error: "Failed to fetch user" });
   }
+});
+
+// Logout (Just a response, since no JWT is used)
+router.post("/logout", (req, res) => {
+  res.status(200).json({ message: "Logout successful" });
 });
 
 module.exports = router;
