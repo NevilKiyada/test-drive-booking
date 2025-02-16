@@ -102,6 +102,7 @@ router.put("/update/:showroomId", async (req, res) => {
 });
 
 // Delete showroom
+
 router.delete("/delete/:showroomId", async (req, res) => {
   try {
     const deletedShowroom = await Showroom.findByIdAndDelete(req.params.showroomId);

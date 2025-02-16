@@ -39,51 +39,42 @@ const Car = require("../models/Car");
 const Showroom = require("../models/Showroom");
 
 const router = express.Router();
-
 // Create a new booking
 router.post("/book", async (req, res) => {
-  const { carId, userId, showroomId, date } = req.body;
+  const { carId, userId, showroomId, date, timeSlot } = req.body;
 
   try {
-    // Validate request data
-    if (!carId || !userId || !showroomId || !date) {
+    if (!carId || !userId || !showroomId || !date || !timeSlot) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Check if user exists
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Check if car exists
     const car = await Car.findById(carId);
     if (!car) return res.status(404).json({ message: "Car not found" });
-
-    // Ensure the car is available for test drives
     if (!car.testDriveAvailability) {
-      return res.status(400).json({ message: "Test drive is unavailable for this car" });
+      return res.status(400).json({ message: "Test drive unavailable" });
     }
 
-    // Check if showroom exists
     const showroom = await Showroom.findById(showroomId);
     if (!showroom) return res.status(404).json({ message: "Showroom not found" });
 
-    // Prevent duplicate bookings on the same date
-    const existingBooking = await Booking.findOne({ car: carId, user: userId, date });
+    const existingBooking = await Booking.findOne({ car: carId, date, timeSlot });
     if (existingBooking) {
-      return res.status(400).json({ message: "You have already booked this car on this date" });
+      return res.status(400).json({ message: "This time slot is already booked" });
     }
 
-    // Create booking
     const newBooking = new Booking({
       car: carId,
       user: userId,
       showroom: showroomId,
       date,
+      timeSlot,
+      status: "Pending",
     });
 
     await newBooking.save();
-
-    // Update car's booking list
     car.bookings.push(newBooking._id);
     await car.save();
 
@@ -93,6 +84,7 @@ router.post("/book", async (req, res) => {
     res.status(500).json({ message: "Failed to create booking", error: err.message });
   }
 });
+
 
 // Get all bookings
 router.get("/all", async (req, res) => {
@@ -157,3 +149,24 @@ router.delete("/cancel/:bookingId", async (req, res) => {
 });
 
 module.exports = router;
+
+
+// Update booking status
+router.patch("/update-status/:bookingId", async (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ["Pending", "Confirmed", "Cancelled"];
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(req.params.bookingId, { status }, { new: true });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    res.status(200).json({ message: `Booking status updated to ${status}`, booking });
+  } catch (err) {
+    console.error("Error updating status:", err);
+    res.status(500).json({ message: "Failed to update status" });
+  }
+});
