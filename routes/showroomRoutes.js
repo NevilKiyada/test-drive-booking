@@ -82,12 +82,12 @@ router.get("/:showroomId/cars", async (req, res) => {
 // Update showroom details
 router.put("/update/:showroomId", async (req, res) => {
   try {
-    const { name, location, contactNumber } = req.body;
+    const { name, location, email, phone, address, image } = req.body;
 
     const updatedShowroom = await Showroom.findByIdAndUpdate(
       req.params.showroomId,
-      { name, location, contactNumber },
-      { new: true }
+      { name, location, email, phone, address, image },
+      { new: true } // Return updated document
     );
 
     if (!updatedShowroom) {
@@ -100,6 +100,9 @@ router.put("/update/:showroomId", async (req, res) => {
     res.status(500).json({ message: "Failed to update showroom" });
   }
 });
+
+
+
 
 // Delete showroom
 
